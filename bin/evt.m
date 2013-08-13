@@ -1,11 +1,11 @@
 classdef evt < event.EventData
     properties
-        RT
-        dur
-        code
-        t % scan
-        offset % scan
-        resp % scan
+            trial % Trial count
+            orderstr % Current order string
+            sectionstr % Current section string
+            presstr % Current presentation string
+            img % Current image matrix
+            abort = 0;
     end
     
   methods

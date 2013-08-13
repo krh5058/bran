@@ -8,12 +8,12 @@ classdef main < handle
         path
         exp
         misc
+        img
         out
     end
     
     events
-        record
-        eval
+        pop
     end
     
     methods (Static)
@@ -110,7 +110,7 @@ classdef main < handle
                 end
             end
             
-            if ~s
+            if isempty(s)
                 % Display properties set-up
                 try
                     fprintf('main.m (main): Gathering screen display details (Static)...\n');
@@ -133,16 +133,6 @@ classdef main < handle
             end
             
         end
-        
-%         function [lh] = recordLh(obj)
-%             fprintf('main.m (recordLh): Adding "record" listener handle...\n');
-%             lh = addlistener(obj,'record',@(src,evt)outFormat(obj,src,evt));
-%         end
-        
-%         function [lh] = evalLh(obj)
-%             fprintf('main.m (evalLh): Adding "eval" listener handle...\n');
-%             lh = addlistener(obj,'eval',@(src,evt)outEval(obj,src,evt));
-%         end
         
         function [path] = pathset(obj,d,ext)
             if all(cellfun(@(y)(ischar(y)),d))
@@ -167,9 +157,25 @@ classdef main < handle
             
 %             % Experimental parameters
             exp.sid = datestr(now,30);
+            exp.section = {'A','B','C'}; % Sections
+            exp.order_n = 12; % Number of orders
+            exp.pres_n = 5; % Number of presentations
             exp.scrambleID = 'C';
             exp.scrambleSize = 16; % Pixel sizes of scramble square sub-section
-%             exp.fixdur = 1000:3000; % ms
+            exp.TR = 2;
+            exp.iPAT = false;
+            
+            TRadd = 0;
+            
+            while TRadd < 4
+                TRadd = TRadd + exp.TR;
+            end
+            
+            exp.DisDaq = TRadd + exp.iPAT*exp.TR + .75; % (s)
+            
+            exp.presdur = 2; % s
+            exp.fixdur = .5; % s
+            exp.ISIdur = 5:.5:20; % s
 %             exp.intro = ['When a word appears in green\n' ...
 %                 'press "m" as quickly as possible.\n\n\n' ...
 %                 'If a word appears in red\n' ...
@@ -180,50 +186,44 @@ classdef main < handle
 %                 'Press the Spacebar to continue.'];
 %             exp.lh.lh1 = obj.recordLh;
 %             exp.lh.lh2 = obj.evalLh;
-%             
+%             exp.lh.lh1 = obj.popLh;
+            
             % Keys
             KbName('UnifyKeyNames');
             keys.esckey = KbName('Escape');
             keys.spacekey = KbName('SPACE');
-%             
+            
             fprintf('pres.m (pres): Defining key press identifiers...\n');
             exp.keys = keys;
-%             
+            
             fprintf('main.m (expset): Storing experimental properties.\n');
             obj.exp = exp;
-%             
-%             out.f_out = [exp.sid '_out'];
-%             out.head1 = {'SID','Trial','Stop','Delay (s)','RT (s)','Code','Duration (s)','Mean (s)'};
-% %             out.head2 = ['Trial',cellfun(@(y)(num2str(y)),num2cell(floor(obj.exp.cond)),'UniformOutput',false)];
-%             out.out1 = cell([1 length(out.head1)]);
-% %             out.out2 = [];
-%             out.out1(1,:) = out.head1;
-%             out.evalMat = [];
-%             
-%             fprintf('main.m (expset): Initializing output.\n');
-%             obj.out = out;
+            
+            out.f_out = [exp.sid '_out'];
+            out.head1 = {'Onset(s)','Order','Section','Picture'};
+            out.out1 = cell([1 length(out.head1)]);
+            out.out1(1,:) = out.head1;
+            
+            fprintf('main.m (expset): Initializing output.\n');
+            obj.out = out;
             
             % Misc
             misc.fix1 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W-20,monitor.center_H,monitor.center_W+20,monitor.center_H,7));
             misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             
-%             misc.Z = []; % Duration delay (s)
-%             misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
-%             misc.stop = 0; % Stop counter and flag.
-% %             misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
-%             misc.trial = 1; % Trial count
-%             misc.abort = 0;
-% %             misc.kill = 0; % Kill flag
-%             misc.final = []; % Final duration
-%             
-%             fprintf('main.m (expset): Storing miscellaneous properties.\n');
-%             obj.misc = misc;
+            fprintf('main.m (expset): Storing miscellaneous properties.\n');
+            obj.misc = misc;
         end
         
         function [result] = scrambleCall(obj)
             result = scramble(obj);
         end
+%         
+%         function [lh] = popLh(obj)
+%             fprintf('main.m (popLh): Adding "pop" listener handle...\n');
+%             lh = addlistener(obj,'pop',@(src,evt)populate(obj,src,evt));
+%         end
         
         function [t] = dispfix(obj) % Corresponding to lh1
             obj.misc.fix1(obj.monitor);
@@ -236,15 +236,44 @@ classdef main < handle
             t = Screen('Flip',obj.monitor.w);
         end
         
-%         function [cyc1,cyc2,cyc3,cyc4,cyc5,cyc6] = cycle(obj)
-%             % cyc1 = First time sample to meet "Stop" onset time
-%             % cyc2 = "Stop" onset, t1
-%             % cyc3 = Key press time, null if no response
-%             % cyc4 = Fixation onset time, t1 + 2000ms
-%             % cyc5 = Trial offset, after randsample of fixation duration
-%             % cyc6 = Pass accuracy
-%     
+        function loadImages(obj)
+%             [~,d] = system(['dir /b ' obj.path.images]);
+%             d = regexp(strtrim(d),'\n','split');
+            obj.img = cell([obj.exp.order_n length(obj.exp.section) obj.exp.pres_n]);
+            
+            for i = 1:obj.exp.order_n
+               for ii = 1:length(obj.exp.section)
+                   for iii = 1:obj.exp.pres_n
+                       try
+                           obj.img{i,ii,iii} = imread([obj.path.images filesep obj.exp.section{ii} int2str(i) '_0' int2str(iii) '.jpg']);
+                       catch ME
+                           disp(ME)
+                       end
+                   end
+               end
+            end
+            
+        end
+        
+%         function data = popDat(obj,data)
+%             data = evt(data);
 %         end
+        
+        function order = shuffleOrder(obj)
+            order = Shuffle(1:obj.exp.order_n);
+        end
+        
+        function order = shuffleSection(obj)
+            order = obj.exp.section(Shuffle(1:length(obj.exp.section)));
+        end
+        
+%         function populate(obj,src,evt)
+%             
+%         end
+        
+        function cycle(obj)
+            
+        end
         
 %         function outFormat(obj,src,evt)
 %             if src.misc.stop

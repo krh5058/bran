@@ -8,7 +8,7 @@
 %
 % See ReadMe.txt
 
-s = 1;
+s = 0; % Scramble
 
 if ~ispc
     error('bran.m: PC support only.')
@@ -52,9 +52,35 @@ end
             
 if s
     result = obj.scrambleCall;
+    disp(result);
 end
+
+obj.loadImages;
+
+order = obj.shuffleOrder;
+
+for i = 1:obj.exp.order_n
+    data.orderstr = int2str(order(i));
+    pres_order = obj.shuffleSection;
+    
+    for ii = 1:length(pres_order)
+        data.sectionstr = pres_order{ii};
+        
+        for iii = 1:obj.exp.pres_n
+            data.presstr = int2str(iii);
+            data.img = obj.img{order(i),strcmp(obj.exp.section,pres_order{ii}),iii};
+            %             evt(data)
             
-% 
+            disp(int2str(order(i)))
+            disp(pres_order{ii})
+            disp(int2str(iii))
+            
+            imshow(data.img);
+
+        end
+    end
+end
+
 % try
 %     fprintf('bran.m: Window initialization...\n')
 %     % Open and format window
