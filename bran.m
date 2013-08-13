@@ -8,6 +8,8 @@
 %
 % See ReadMe.txt
 
+s = 1;
+
 if ~ispc
     error('bran.m: PC support only.')
 end
@@ -41,12 +43,17 @@ end
 try
     fprintf('bran.m: Object Handling...\n')
     % Object construction and initial key restriction
-    obj = main(ext,d);
+    obj = main(ext,d,s);
     RestrictKeysForKbCheck(obj.exp.keys.spacekey);
     fprintf('bran.m: Object Handling success!.\n')
 catch ME
     throw(ME)
 end
+            
+if s
+    result = obj.scrambleCall;
+end
+            
 % 
 % try
 %     fprintf('bran.m: Window initialization...\n')

@@ -82,6 +82,7 @@ classdef main < handle
         function obj = main(varargin)
             ext = [];
             d = [];
+            s = [];
             
             % Argument evaluation
             for i = 1:nargin
@@ -89,6 +90,8 @@ classdef main < handle
                     ext = varargin{i};
                 elseif iscell(varargin{i}) % Assume associated directories
                     d = varargin{i};
+                elseif islogical(varargin{i})
+                    s = varargin{i};
                 else
                     fprintf(['main.m (main): Other handles required for argument value: ' int2str(i) '\n']);
                 end
@@ -107,15 +110,17 @@ classdef main < handle
                 end
             end
             
-            % Display properties set-up
-            try
-                fprintf('main.m (main): Gathering screen display details (Static)...\n');
-                monitor = obj.disp; % Static method
-                fprintf('main.m (disp): Storing monitor property.\n');
-                obj.monitor = monitor;
-                fprintf('main.m (main): obj.disp success!\n');
-            catch ME
-                throw(ME);
+            if ~s
+                % Display properties set-up
+                try
+                    fprintf('main.m (main): Gathering screen display details (Static)...\n');
+                    monitor = obj.disp; % Static method
+                    fprintf('main.m (disp): Storing monitor property.\n');
+                    obj.monitor = monitor;
+                    fprintf('main.m (main): obj.disp success!\n');
+                catch ME
+                    throw(ME);
+                end
             end
             
             % Experimental properties set-up
@@ -162,20 +167,9 @@ classdef main < handle
             
 %             % Experimental parameters
             exp.sid = datestr(now,30);
-%             exp.dur1 = 200; % ms
-%             exp.dur2 = 2000; % ms
-%             exp.T = (1/60)*1000; % ms
-% %             exp.s = exp.T*4; % ms
-% %             s1 = 200 - 2*exp.s;
-% %             sn = 200 + 4*exp.s;
+            exp.scrambleID = 'C';
+            exp.scrambleSize = 16; % Pixel sizes of scramble square sub-section
 %             exp.fixdur = 1000:3000; % ms
-%             exp.stopthresh = 80;
-%             exp.green = [0 255 0];
-%             exp.red = [255 0 0];
-%             exp.stop_max = 3;
-%             exp.go_hold = 15; % Trials prior to stop
-%             exp.break_n = [150 100 50]; % Break intervals (trial #)
-%             exp.stop_n = 200; % Max trial limit
 %             exp.intro = ['When a word appears in green\n' ...
 %                 'press "m" as quickly as possible.\n\n\n' ...
 %                 'If a word appears in red\n' ...
@@ -184,7 +178,6 @@ classdef main < handle
 %                 'Press space to continue.'];
 %             exp.break = ['Please take a break.\n\n\n' ...
 %                 'Press the Spacebar to continue.'];
-%             exp.word = 'test';
 %             exp.lh.lh1 = obj.recordLh;
 %             exp.lh.lh2 = obj.evalLh;
 %             
@@ -226,6 +219,10 @@ classdef main < handle
 %             
 %             fprintf('main.m (expset): Storing miscellaneous properties.\n');
 %             obj.misc = misc;
+        end
+        
+        function [result] = scrambleCall(obj)
+            result = scramble(obj);
         end
         
         function [t] = dispfix(obj) % Corresponding to lh1
