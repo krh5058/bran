@@ -4,6 +4,7 @@ classdef main < handle
     
     properties
         debug = 1; % Debug on/off
+        s = false; % Scramble flag
         monitor
         path
         exp
@@ -13,7 +14,7 @@ classdef main < handle
     end
     
     events
-        pop
+        record
     end
     
     methods (Static)
@@ -93,6 +94,7 @@ classdef main < handle
                     d = varargin{i};
                 elseif islogical(varargin{i})
                     s = varargin{i};
+                    obj.s = s;
                 else
                     fprintf(['main.m (main): Other handles required for argument value: ' int2str(i) '\n']);
                 end
@@ -111,7 +113,7 @@ classdef main < handle
                 end
             end
             
-            if isempty(s)
+            if ~s
                 % Display properties set-up
                 try
                     fprintf('main.m (main): Gathering screen display details (Static)...\n');
@@ -156,7 +158,7 @@ classdef main < handle
         
         function [exp] = expset(obj)
             
-%             % Experimental parameters
+            % Experimental parameters
             exp.sid = datestr(now,30);
             exp.section = {'A','B','C'}; % Sections
             exp.order_n = 12; % Number of orders
@@ -174,18 +176,32 @@ classdef main < handle
             
             exp.DisDaq = TRadd + exp.iPAT*exp.TR + .75; % (s)
             
+            if obj.s
+            else
+                fprintf('main.m (expset): UI query for trigger option.\n');
+                frame = javaui;
+                waitfor(frame,'Visible','off'); % Wait for visibility to be off
+                s = getappdata(frame,'UserData'); % Get frame data
+                java.lang.System.gc();
+                
+                if isempty(s)
+                    error('scan.m (scan): User Cancelled.')
+                end
+                
+                exp.trig = s{1};
+            end
+            
             exp.presdur = 2; % s
             exp.fixdur = .5; % s
             exp.ISIdur = 5:.5:20; % s 
-            exp.intro = 'Get Ready';
-            exp.intro = 'Get Ready.';
+            exp.intro1 = 'Get Ready';
+            exp.intro2 = 'Get Ready.';
             exp.presmat = []; % Timing matrix
-%             exp.lh.lh1 = obj.recordLh;
-%             exp.lh.lh2 = obj.evalLh;
-%             exp.lh.lh1 = obj.popLh;
+            exp.lh.lh1 = obj.recordLh;
             
             % Keys
             KbName('UnifyKeyNames');
+            keys.tkey = KbName('t');
             keys.esckey = KbName('Escape');
             keys.spacekey = KbName('SPACE');
             
@@ -237,11 +253,10 @@ classdef main < handle
             
         end
         
-%         
-%         function [lh] = popLh(obj)
-%             fprintf('main.m (popLh): Adding "pop" listener handle...\n');
-%             lh = addlistener(obj,'pop',@(src,evt)populate(obj,src,evt));
-%         end
+        function [lh] = recordLh(obj)
+            fprintf('main.m (recordLh): Adding "record" listener handle...\n');
+            lh = addlistener(obj,'record',@(src,evt)outFormat(obj,src,evt));
+        end
         
         function drwfix(obj) % Corresponding to lh1
             obj.misc.fix1(obj.monitor);
@@ -271,20 +286,13 @@ classdef main < handle
            end
         end
         
-        function [t1] = dispimg(obj,t0)
-            [~,~,t1] = Screen('Flip',obj.monitor.w,t0);
-            if isempty(t1)
-                t1 = 0;
-            end
+        function dispimg(obj,t0)
+            Screen('Flip',obj.monitor.w,t0);
         end
         
         function t = getT(obj,iii,ii,i)
             t = obj.exp.presmat(iii,ii,i);
         end
-        
-%         function data = popDat(obj,data)
-%             data = evt(data);
-%         end
         
         function order = shuffleOrder(obj)
             order = Shuffle(1:obj.exp.order_n);
@@ -325,60 +333,14 @@ classdef main < handle
             end
         end
         
-%         function populate(obj,src,evt)
-%             
-%         end
+        function outFormat(obj,src,evt)
+            obj.out.out1(end+1,:) = {evt.t,evt.order,evt.section,evt.pres};
+        end
         
-%         function cycle(obj)
-%             
-%         end
-        
-%         function outFormat(obj,src,evt)
-%             if src.misc.stop
-%                 type = 'Stop';
-%                 delay = obj.misc.Z;
-%                 stopval = 1;
-% %                 temp = nan([1 length(src.out.head2)]);
-% %                 temp(1) = src.misc.trial;
-% %                 temp(src.misc.step+1) = evt.pass;
-% %                 obj.out.evalMat(end+1,:) = temp;
-%             else
-%                 type = 'Go';
-%                 delay = [];
-%                 stopval = 0;
-%             end
-%             obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,stopval,delay,evt.RT,evt.code,evt.dur};
-%             obj.out.out1{end,end} = mean([obj.out.out1{2:end,5}]);
-%         end
-        
-%         function outEval(obj,src,evt)
-% %             if src.misc.trial > 1
-% %                 sum_cond = sum(~isnan(src.out.evalMat(:,2:end)));
-% %                 trial_n_pass = sum_cond >= src.exp.kill_n;
-% %                 acc_pass = nanmean(src.out.evalMat(:,2:end)) > src.exp.kill_acc;
-% %                 both_pass = intersect(find(trial_n_pass),find(acc_pass));
-% %                 if ~isempty(both_pass)
-% %                     if obj.debug
-% %                         disp(['main.m (outEval) Ending conditions satisfied. Final duration condition: ' num2str(floor(src.exp.cond(both_pass)))]);
-% %                     end
-% %                     obj.misc.kill = 1;
-% %                     obj.misc.final = num2str(floor(src.exp.cond(both_pass)));
-% %                 end
-% %             end
-%         end
-        
-%         function outWrite(obj)
-%                         
-%             fprintf('main.m (outWrite): Storing accuracy data.\n');
-% %             temp = num2cell(obj.out.evalMat);
-% %             temp(cellfun(@isnan,temp)) = {''};
-% %             
-% %             obj.out.out2 = [obj.out.head2; temp; ['FinalAccuracy:',num2cell(nanmean(obj.out.evalMat(:,2:end),1))] ];
-%             
-%             cell2csv([obj.path.out filesep obj.out.f_out '1.csv'],obj.out.out1)
-% %             cell2csv([obj.path.out filesep obj.out.f_out '2.csv'],obj.out.out2)
-%         
-%         end
+        function outWrite(obj)
+            fprintf('main.m (outWrite): Storing presentation data.\n');
+            cell2csv([obj.path.out filesep obj.out.f_out '1.csv'],obj.out.out1)
+        end
         
     end
     

@@ -1,11 +1,9 @@
 classdef evt < event.EventData
     properties
-            trial % Trial count
-            order % Current order
-            section % Current section
-            pres % Current presentation
-            img % Current image matrix
-            abort = 0;
+        t % Timestamp (s)
+        order % Current order
+        section % Current section
+        pres % Current presentation
     end
     
   methods
