@@ -23,7 +23,7 @@ classdef main < handle
             if debug
                 %                 whichScreen = max(Screen('Screens'));
                 whichScreen = 2;
-                Screen('Preference', 'Verbosity', 5);
+                oldVerbosityDebugLevel = Screen('Preference', 'Verbosity', 5);
             else
                 whichScreen = 0;
             end
@@ -72,6 +72,7 @@ classdef main < handle
             monitor.gray2 = gray2;
             monitor.absoluteDifferenceBetweenWhiteAndGray = absoluteDifferenceBetweenWhiteAndGray;
             monitor.oldVisualDebugLevel = oldVisualDebugLevel;
+            monitor.oldVerbosityDebugLevel = oldVerbosityDebugLevel;
             %             monitor.oldOverrideMultimediaEngine = oldOverrideMultimediaEngine;
             
             Screen('CloseAll');
@@ -175,15 +176,10 @@ classdef main < handle
             
             exp.presdur = 2; % s
             exp.fixdur = .5; % s
-            exp.ISIdur = 5:.5:20; % s
-%             exp.intro = ['When a word appears in green\n' ...
-%                 'press "m" as quickly as possible.\n\n\n' ...
-%                 'If a word appears in red\n' ...
-%                 'do not make a key press.\n\n\n' ...
-%                 'Both speed and accuracy are equally important.\n\n\n' ...
-%                 'Press space to continue.'];
-%             exp.break = ['Please take a break.\n\n\n' ...
-%                 'Press the Spacebar to continue.'];
+            exp.ISIdur = 5:.5:20; % s 
+            exp.intro = 'Get Ready';
+            exp.intro = 'Get Ready.';
+            exp.presmat = []; % Timing matrix
 %             exp.lh.lh1 = obj.recordLh;
 %             exp.lh.lh2 = obj.evalLh;
 %             exp.lh.lh1 = obj.popLh;
@@ -211,6 +207,8 @@ classdef main < handle
             misc.fix1 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W-20,monitor.center_H,monitor.center_W+20,monitor.center_H,7));
             misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
+            misc.mktex = @(monitor,img)(Screen('MakeTexture', monitor.w,img));
+            misc.drwtex = @(monitor,tex)(Screen('DrawTexture',monitor.w,tex));
             
             fprintf('main.m (expset): Storing miscellaneous properties.\n');
             obj.misc = misc;
@@ -218,22 +216,6 @@ classdef main < handle
         
         function [result] = scrambleCall(obj)
             result = scramble(obj);
-        end
-%         
-%         function [lh] = popLh(obj)
-%             fprintf('main.m (popLh): Adding "pop" listener handle...\n');
-%             lh = addlistener(obj,'pop',@(src,evt)populate(obj,src,evt));
-%         end
-        
-        function [t] = dispfix(obj) % Corresponding to lh1
-            obj.misc.fix1(obj.monitor);
-            obj.misc.fix2(obj.monitor);
-            t = Screen('Flip',obj.monitor.w);
-        end
-        
-        function [t] = disptxt(obj,txt) % Corresponding to lh3
-            obj.misc.text(obj.monitor,txt,obj.monitor.black);
-            t = Screen('Flip',obj.monitor.w);
         end
         
         function loadImages(obj)
@@ -255,6 +237,51 @@ classdef main < handle
             
         end
         
+%         
+%         function [lh] = popLh(obj)
+%             fprintf('main.m (popLh): Adding "pop" listener handle...\n');
+%             lh = addlistener(obj,'pop',@(src,evt)populate(obj,src,evt));
+%         end
+        
+        function drwfix(obj) % Corresponding to lh1
+            obj.misc.fix1(obj.monitor);
+            obj.misc.fix2(obj.monitor);
+        end
+        
+        function [t] = disptxt(obj,txt) % Corresponding to lh3
+            obj.misc.text(obj.monitor,txt,obj.monitor.black);
+            t = Screen('Flip',obj.monitor.w);
+        end
+        
+        function result = drwimg(obj,img)
+            try
+                tex = obj.misc.mktex(obj.monitor,img);
+                obj.misc.drwtex(obj.monitor,tex);
+                result = tex;
+            catch ME
+                result = ME;
+            end
+        end
+        
+        function closetex(obj,tex)
+           try
+               Screen('Close',tex);
+           catch ME
+               disp(ME);
+           end
+        end
+        
+        function [t1] = dispimg(obj,t0)
+            [~,~,t1] = Screen('Flip',obj.monitor.w,t0);
+            if isempty(t1)
+                t1 = 0;
+            end
+        end
+        
+        function t = getT(obj,iii,ii,i)
+            t = obj.exp.presmat(iii,ii,i);
+        end
+        
 %         function data = popDat(obj,data)
 %             data = evt(data);
 %         end
@@ -267,13 +294,44 @@ classdef main < handle
             order = obj.exp.section(Shuffle(1:length(obj.exp.section)));
         end
         
+        function t = presCalc(obj)
+            t = zeros([obj.exp.pres_n*2 length(obj.exp.section) obj.exp.order_n]); % Rows include picture and fixation presentation (i.e. x2) 
+            t0 = 0;
+            picflag = 1; % Default
+            ISIflag = 1; % Default
+            
+            for i = 1:obj.exp.order_n
+                for ii = 1:length(obj.exp.section)
+                    for iii = 1:obj.exp.pres_n*2 
+                        if picflag % Picture
+                            t(iii,ii,i) = t0;
+                            t0 = t0 + obj.exp.presdur;
+                            picflag = 0;
+                        else % Fixation
+                            t(iii,ii,i) = t0;
+                            
+                            if ISIflag < obj.exp.pres_n % Inter-picture fixation
+                                t0 = t0 + obj.exp.fixdur;
+                                ISIflag = ISIflag + 1;
+                            else % Inter-trial fixation
+                                t0 = t0 + randsample(obj.exp.ISIdur,1);
+                                ISIflag = 1;
+                            end
+                            
+                            picflag = 1;
+                        end
+                    end
+                end
+            end
+        end
+        
 %         function populate(obj,src,evt)
 %             
 %         end
         
-        function cycle(obj)
-            
-        end
+%         function cycle(obj)
+%             
+%         end
         
 %         function outFormat(obj,src,evt)
 %             if src.misc.stop
