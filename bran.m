@@ -49,7 +49,7 @@ end
 try
     fprintf('bran.m: Object Handling...\n')
     % Object construction and initial key restriction
-     obj = main(ext,d,s);
+    obj = main(ext,d,s);
     fprintf('bran.m: Object Handling success!.\n')
 catch ME
     throw(ME)
@@ -76,10 +76,9 @@ else
     
     % Prepare experimental conditions
     obj.loadImages;
-    order = obj.shuffleOrder;
+    %     order = obj.shuffleOrder;
     obj.exp.presmat = obj.presCalc;
-    picflag = 1;
-    tobj = tclass;
+    tobj = tclass(obj.exp.keys.esckey);
     
     if ~obj.debug
         ListenChar(2);
@@ -87,44 +86,59 @@ else
         ShowHideFullWinTaskbarMex(0);
     end
     
-    % % Wait for instructions
-    % obj.disptxt(obj.exp.intro);
-    % KbStrokeWait;
-    
-    % Triggering
-    obj.disptxt(obj.exp.intro1);
-    if obj.exp.trig % Auto-trigger
-        RestrictKeysForKbCheck(obj.exp.keys.tkey);
-        KbStrokeWait; % Waiting for first trigger pulse, return timestamp
-    else % Manual trigger
-        RestrictKeysForKbCheck(obj.exp.keys.spacekey);
-        KbStrokeWait; % Waiting for scanner operator
-        obj.disptxt(obj.exp.intro2);
-        pause(obj.exp.DisDaq); % Simulating DisDaq
-    end
-    
-    RestrictKeysForKbCheck(obj.exp.keys.esckey);
-    
-    start(tobj.tmr);
-    t0 = GetSecs;
-    
     for i = 1:obj.exp.order_n
-        data.order = order(i);
-        pres_order = obj.shuffleSection;
         
-        for ii = 1:length(pres_order)
-            data.section = pres_order{ii};
+        % Prepare intra-order parameters
+        ii = 1;
+        iii = 1;
+        picflag = 1;
+        prepflag = 1;
+        dispflag = 1;
+        data.order = obj.exp.order(i);
+        order_i = data.order;
+        %         data.order = order(i);
+        pres_order = obj.shuffleSection;
+    
+        % Wait for instructions
+        RestrictKeysForKbCheck(obj.exp.keys.spacekey);
+        obj.disptxt(obj.exp.intro);
+        KbStrokeWait;
+        
+        % Triggering
+        obj.disptxt(obj.exp.intro1);
+        if obj.exp.trig % Auto-trigger
+            RestrictKeysForKbCheck(obj.exp.keys.tkey);
+            KbStrokeWait; % Waiting for first trigger pulse, return timestamp
+        else % Manual trigger
+            RestrictKeysForKbCheck(obj.exp.keys.spacekey);
+            KbStrokeWait; % Waiting for scanner operator
+            obj.disptxt(obj.exp.intro2);
+            pause(obj.exp.DisDaq); % Simulating DisDaq
+        end
+        
+        RestrictKeysForKbCheck(obj.exp.keys.esckey);
+        
+        start(tobj.tmr);
+        t0 = GetSecs;
+        
+        while (GetSecs - t0) < obj.exp.presmat(end,end,order_i) % Continue until last time point
             
-            for iii = 1:obj.exp.pres_n*2
-                t = obj.getT(iii,ii,i);
-                if picflag
+            % Draw & prepare
+            if prepflag
+                prepflag = 0;
+                %         for ii = 1:length(pres_order)
+                data.section = pres_order{ii};
+                
+                %             for iii = 1:obj.exp.pres_n*2
+                t = obj.getT(iii,ii,order_i);
+                if picflag % Picture or fixation
                     if obj.debug
-                        disp(['bran.m (Debug): Expected image: ' pres_order{ii} int2str(order(i)) '_' int2str(ceil(iii/2))]);
+                        disp(['bran.m (Debug): Expected image: ' data.section int2str(data.order) '_' int2str(ceil(iii/2))]);
                     end
                     
-                    data.pres = [pres_order{ii} int2str(order(i)) '_' int2str(ceil(iii/2))];
+                    data.pres = [data.section int2str(data.order) '_' int2str(ceil(iii/2))];
                     
-                    img = obj.img{order(i),strcmp(obj.exp.section,pres_order{ii}),ceil(iii/2)};
+                    img = obj.img{order_i,strcmp(obj.exp.section,pres_order{ii}),ceil(iii/2)};
                     tex = obj.drwimg(img);
                     picflag = 0;
                 else
@@ -137,41 +151,60 @@ else
                     obj.drwfix;
                     picflag = 1;
                 end
-                
-                try
-                    obj.dispimg(t0+t);
-                catch ME
-                    disp(ME)
-                end
-                
-                data.t = num2str(GetSecs-t0);
-                
-                if obj.debug
-                    disp(['bran.m (Debug): Scheduled time: ' num2str(t)]);
-                    disp(['bran.m (Debug): VBL timestamp: ' num2str(data.t)]);
-                    disp(['bran.m (Debug): Order value: ' int2str(order(i))]);
-                    disp(['bran.m (Debug): Section ID: ' pres_order{ii}]);
-                    disp(['bran.m (Debug): Presentation order value: ' int2str(ceil(iii/2))]);
-                end
-                
-                notify(obj,'record',evt(data));
-                
-                if picflag
-                    obj.closetex(tex);
-                end
-                
-                if get(tobj.tmr,'UserData')
-                    break;
+            end
+            
+            % Display & record
+            if dispflag
+                if (GetSecs - t0) > t % If time surpasses current onset
+                    prepflag = 1; % Prep next
+                    try
+                        obj.dispimg();
+                        
+                        data.t = num2str(GetSecs-t0);
+                        
+                        if obj.debug
+                            disp(['bran.m (Debug): Scheduled time: ' num2str(t)]);
+                            disp(['bran.m (Debug): VBL timestamp: ' num2str(data.t)]);
+                            disp(['bran.m (Debug): Order value: ' int2str(data.order)]);
+                            disp(['bran.m (Debug): Section ID: ' data.pres]);
+                            disp(['bran.m (Debug): Presentation order value: ' int2str(ceil(iii/2))]);
+                            notify(obj,'record',evt(data));
+                        end
+                        
+                    catch ME
+                        disp(ME)
+                    end
+                    
+                    if picflag
+                        obj.closetex(tex);
+                    end
+                    
+                    % Increase indices
+                    if iii == obj.exp.pres_n*2 % Increase if not final presentation index
+                        iii = 1; % Reset to 1 if final index
+                        if ii == length(pres_order) % Increase if not final section index
+                            prepflag = 0; % Cancel last prep
+                            dispflag = 0; % Stop displays
+                        else
+                            ii = ii + 1;
+                        end
+                    else
+                        iii = iii + 1;
+                    end
+                    
                 end
             end
             
-            if get(tobj.tmr,'UserData')
+            ud = get(tobj.tmr,'UserData');
+            if ud.keyIsDown
                 break;
             end
             
         end
         
-        if get(tobj.tmr,'UserData')
+        stop(tobj.tmr);
+        
+        if ud.keyIsDown
             break;
         end
         

@@ -159,7 +159,6 @@ classdef main < handle
         function [exp] = expset(obj)
             
             % Experimental parameters
-            exp.sid = datestr(now,30);
             exp.section = {'A','B','C'}; % Sections
             exp.order_n = 12; % Number of orders
             exp.pres_n = 5; % Number of presentations
@@ -178,8 +177,8 @@ classdef main < handle
             
             if obj.s
             else
-                fprintf('main.m (expset): UI query for trigger option.\n');
-                frame = javaui;
+                fprintf('main.m (expset): UI query for experimental parameters.\n');
+                frame = javaui(cellfun(@int2str,num2cell(1:exp.order_n),'UniformOutput',false));
                 waitfor(frame,'Visible','off'); % Wait for visibility to be off
                 s = getappdata(frame,'UserData'); % Get frame data
                 java.lang.System.gc();
@@ -188,12 +187,15 @@ classdef main < handle
                     error('scan.m (scan): User Cancelled.')
                 end
                 
-                exp.trig = s{1};
+                exp.sid = s{1};
+                exp.trig = s{2};
+                exp.order = cellfun(@str2double,s{3})';
             end
             
             exp.presdur = 2; % s
             exp.fixdur = .5; % s
             exp.ISIdur = 5:.5:20; % s 
+            exp.intro1 = 'Press Spacebar to continue.';
             exp.intro1 = 'Get Ready';
             exp.intro2 = 'Get Ready.';
             exp.presmat = []; % Timing matrix
@@ -286,17 +288,17 @@ classdef main < handle
            end
         end
         
-        function dispimg(obj,t0)
-            Screen('Flip',obj.monitor.w,t0);
+        function dispimg(obj)
+            Screen('Flip',obj.monitor.w);
         end
         
         function t = getT(obj,iii,ii,i)
             t = obj.exp.presmat(iii,ii,i);
         end
         
-        function order = shuffleOrder(obj)
-            order = Shuffle(1:obj.exp.order_n);
-        end
+%         function order = shuffleOrder(obj)
+%             order = Shuffle(1:obj.exp.order_n);
+%         end
         
         function order = shuffleSection(obj)
             order = obj.exp.section(Shuffle(1:length(obj.exp.section)));
@@ -304,11 +306,11 @@ classdef main < handle
         
         function t = presCalc(obj)
             t = zeros([obj.exp.pres_n*2 length(obj.exp.section) obj.exp.order_n]); % Rows include picture and fixation presentation (i.e. x2) 
-            t0 = 0;
             picflag = 1; % Default
             ISIflag = 1; % Default
             
             for i = 1:obj.exp.order_n
+                t0 = 0;
                 for ii = 1:length(obj.exp.section)
                     for iii = 1:obj.exp.pres_n*2 
                         if picflag % Picture
