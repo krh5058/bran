@@ -28,7 +28,7 @@ classdef main < handle
             else
                 whichScreen = 0;
             end
-            oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel',0);
+%             oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel',0);
             %             oldOverrideMultimediaEngine = Screen('Preference', 'OverrideMultimediaEngine', 1);
             %             Screen('Preference', 'ConserveVRAM',4096);
             %             Screen('Preference', 'VBLTimestampingMode', 1);
@@ -195,7 +195,7 @@ classdef main < handle
             exp.presdur = 2; % s
             exp.fixdur = .5; % s
             exp.ISIdur = 5:.5:20; % s 
-            exp.intro1 = 'Press Spacebar to continue.';
+            exp.intro = 'Press Spacebar to continue.';
             exp.intro1 = 'Get Ready';
             exp.intro2 = 'Get Ready.';
             exp.presmat = []; % Timing matrix

@@ -83,7 +83,7 @@ else
     if ~obj.debug
         ListenChar(2);
         HideCursor;
-        ShowHideFullWinTaskbarMex(0);
+        ShowHideWinTaskbarMex(0);
     end
     
     for i = 1:obj.exp.order_n
@@ -99,6 +99,8 @@ else
         %         data.order = order(i);
         pres_order = obj.shuffleSection;
     
+        obj.dispimg(); % Clear screen
+        
         % Wait for instructions
         RestrictKeysForKbCheck(obj.exp.keys.spacekey);
         obj.disptxt(obj.exp.intro);
@@ -168,8 +170,9 @@ else
                             disp(['bran.m (Debug): Order value: ' int2str(data.order)]);
                             disp(['bran.m (Debug): Section ID: ' data.pres]);
                             disp(['bran.m (Debug): Presentation order value: ' int2str(ceil(iii/2))]);
-                            notify(obj,'record',evt(data));
                         end
+                        
+                        notify(obj,'record',evt(data));
                         
                     catch ME
                         disp(ME)
@@ -219,10 +222,10 @@ else
     if ~obj.debug
         ListenChar(0);
         ShowCursor;
-        ShowHideFullWinTaskbarMex(1);
+        ShowHideWinTaskbarMex(1);
     end
     
-    Screen('Preference','Verbosity',obj.monitor.oldVerbosityDebugLevel);
+%     Screen('Preference','Verbosity',obj.monitor.oldVerbosityDebugLevel);
     Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
     fclose('all');
     Screen('CloseAll');
