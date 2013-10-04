@@ -3,7 +3,7 @@ classdef main < handle
     %   Detailed explanation goes here
     
     properties
-        debug = 0; % Debug on/off
+        debug = 1; % Debug on/off
         s = false; % Scramble flag
         monitor
         path
@@ -20,7 +20,7 @@ classdef main < handle
     methods (Static)
         function [monitor] = disp()
             % Find out screen number.
-            debug = 0;
+            debug = 1;
             if debug
                 %                 whichScreen = max(Screen('Screens'));
                 whichScreen = 2;
@@ -46,7 +46,6 @@ classdef main < handle
             % Shift image center
             scale = 2/3; % Upper 2/3's of screen
             upper = rect(4)*scale;
-            u_center_H = upper/2; % Center of upper portion of screen
             
             % ---------- Color Setup ----------
             % Gets color values.
@@ -73,7 +72,6 @@ classdef main < handle
             monitor.center_W = center_W;
             monitor.center_H = center_H;
             monitor.upper = upper;
-            monitor.u_center_H = u_center_H;
             monitor.black = black;
             monitor.white = white;
             monitor.gray = gray;
@@ -224,16 +222,16 @@ classdef main < handle
             out.head1 = {'Onset(s)','Order','Section','Picture'};
             out.out1 = cell([1 length(out.head1)]);
             out.out1(1,:) = out.head1;
-             
+            
             fprintf('main.m (expset): Initializing output.\n');
             obj.out = out;
             
             % Misc
-            misc.fix1 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W-20,monitor.u_center_H,monitor.center_W+20,monitor.u_center_H,7));
-            misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.u_center_H-20,monitor.center_W,monitor.u_center_H+20,7));
-            misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center',monitor.u_center_H,color));
+            misc.fix1 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W-20,monitor.center_H,monitor.center_W+20,monitor.center_H,7));
+            misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
+            misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             misc.mktex = @(monitor,img)(Screen('MakeTexture', monitor.w,img));
-            misc.drwtex = @(monitor,tex,rect)(Screen('DrawTexture',monitor.w,tex,[],rect)); % rect corresponds to destination of rectangular subpart of window
+            misc.drwtex = @(monitor,tex)(Screen('DrawTexture',monitor.w,tex));
             
             fprintf('main.m (expset): Storing miscellaneous properties.\n');
             obj.misc = misc;
@@ -253,9 +251,8 @@ classdef main < handle
                    for iii = 1:obj.exp.pres_n
                        try
                            temp = imread([obj.path.images filesep obj.exp.section{ii} int2str(i) '_0' int2str(iii) '.jpg']);
-                           
                            if size(temp,1) > obj.monitor.upper
-                               temp = imresize(temp,obj.monitor.upper/size(temp,1)); % Rescale to meet upper 2/3s pixel height
+                               temp = imresize(temp,obj.monitor.upper/size(temp,1)); % Resc
                            end
                            
                            obj.img{i,ii,iii} = temp;
@@ -287,13 +284,7 @@ classdef main < handle
         function result = drwimg(obj,img)
             try
                 tex = obj.misc.mktex(obj.monitor,img);
-                
-                h = size(img,1);
-                w = size(img,2);
-                
-                rect = [(obj.monitor.center_W-w/2) (obj.monitor.u_center_H-h/2) (obj.monitor.center_W+w/2) (obj.monitor.u_center_H+h/2)];
-                  
-                obj.misc.drwtex(obj.monitor,tex,rect);
+                obj.misc.drwtex(obj.monitor,tex);
                 result = tex;
             catch ME
                 result = ME;

@@ -83,7 +83,7 @@ else
     if ~obj.debug
         ListenChar(2);
         HideCursor;
-        ShowHideWinTaskbarMex(0);
+        ShowHideFullWinTaskbarMex(0);
     end
     
     for i = 1:obj.exp.order_n
@@ -102,9 +102,14 @@ else
         obj.dispimg(); % Clear screen
         
         % Wait for instructions
-        RestrictKeysForKbCheck(obj.exp.keys.spacekey);
+        RestrictKeysForKbCheck([obj.exp.keys.spacekey obj.exp.keys.esckey]);
         obj.disptxt(obj.exp.intro);
-        KbStrokeWait;
+        [~,keyCode] = KbStrokeWait;
+        
+        % Abort if escape pressed during instructions screen
+        if find(keyCode)==obj.exp.keys.esckey
+           break; 
+        end
         
         % Triggering
         obj.disptxt(obj.exp.intro1);
@@ -222,11 +227,11 @@ else
     if ~obj.debug
         ListenChar(0);
         ShowCursor;
-        ShowHideWinTaskbarMex(1);
+        ShowHideFullWinTaskbarMex(1);
     end
     
 %     Screen('Preference','Verbosity',obj.monitor.oldVerbosityDebugLevel);
-    Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
+%     Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
     fclose('all');
     Screen('CloseAll');
 end
