@@ -3,7 +3,7 @@ classdef main < handle
     %   Detailed explanation goes here
     
     properties
-        debug = 0; % Debug on/off
+        debug = 1; % Debug on/off
         s = false; % Scramble flag
         monitor
         path
@@ -20,7 +20,7 @@ classdef main < handle
     methods (Static)
         function [monitor] = disp()
             % Find out screen number.
-            debug = 0;
+            debug = 1;
             if debug
                 %                 whichScreen = max(Screen('Screens'));
                 whichScreen = 2;
@@ -170,6 +170,7 @@ classdef main < handle
             exp.order_n = 12; % Number of orders
             exp.pres_n = 5; % Number of presentations
             exp.scrambleID = 'C';
+%             exp.scrambleID = 'E';
             exp.scrambleSize = 16; % Pixel sizes of scramble square sub-section
             exp.TR = 2;
             exp.iPAT = false;
@@ -183,6 +184,7 @@ classdef main < handle
             exp.DisDaq = TRadd + exp.iPAT*exp.TR + .75; % (s)
             
             if obj.s
+                exp.sid = datestr(now,30);
             else
                 fprintf('main.m (expset): UI query for experimental parameters.\n');
                 frame = javaui(cellfun(@int2str,num2cell(1:exp.order_n),'UniformOutput',false));
@@ -221,7 +223,7 @@ classdef main < handle
             obj.exp = exp;
             
             out.f_out = [exp.sid '_out'];
-            out.head1 = {'Onset(s)','Order','Section','Picture'};
+            out.head1 = {'SID','Run','Scheduled Onset(s)','Actual Onset(s)','Scheduled Onset(TR)','Actual Onset(TR)','Order','Section','Picture'};
             out.out1 = cell([1 length(out.head1)]);
             out.out1(1,:) = out.head1;
              
@@ -324,8 +326,10 @@ classdef main < handle
             order = obj.exp.section(Shuffle(1:length(obj.exp.section)));
         end
         
-        function t = presCalc(obj)
+        function [t,t_end] = presCalc(obj)
             t = zeros([obj.exp.pres_n*2 length(obj.exp.section) obj.exp.order_n]); % Rows include picture and fixation presentation (i.e. x2) 
+            t_end = zeros([obj.exp.order_n 1]); % Ending times
+            
             picflag = 1; % Default
             ISIflag = 1; % Default
             
@@ -352,11 +356,16 @@ classdef main < handle
                         end
                     end
                 end
+                
+                t_end(i) = t0;
+                
             end
         end
         
         function outFormat(obj,src,evt)
-            obj.out.out1(end+1,:) = {evt.t,evt.order,evt.section,evt.pres};
+            schedTR = evt.schedt/obj.exp.TR;
+            actTR = evt.actt/obj.exp.TR;
+            obj.out.out1(end+1,:) = {obj.exp.sid,evt.run,evt.schedt,evt.actt,schedTR,actTR,evt.order,evt.section,evt.pres};
         end
         
         function outWrite(obj)

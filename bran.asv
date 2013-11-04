@@ -130,7 +130,7 @@ else
         start(tobj.tmr);
         t0 = GetSecs;
         
-        while (GetSecs - t0) < obj.exp.presmatend(order_i) % Continue until last time point
+        while (GetSecs - t0) < obj.exp.presmatend(i) % Continue until last time point
             
             % Draw & prepare
             if prepflag
@@ -166,10 +166,10 @@ else
             if dispflag
                 if (GetSecs - t0) > data.schedt % If time surpasses current onset
                     prepflag = 1; % Prep next
-                    try
+                    try t t t t
                         obj.dispimg();
                         
-                        data.actt = GetSecs-t0;
+                        data.actt = num2str(GetSecs-t0);
                         
                         if obj.debug
                             disp(['bran.m (Debug): Scheduled time: ' num2str(data.schedt)]);
