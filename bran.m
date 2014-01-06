@@ -86,7 +86,7 @@ else
         ShowHideFullWinTaskbarMex(0);
     end
     
-    for i = 1:obj.exp.order_n
+    for i = 1:length(obj.exp.order)
         
         data.run = i;
         
@@ -227,9 +227,10 @@ else
         
     end
     
-    obj.outWrite;
+%     obj.outWrite;
     
     % Clean up
+    obj.outClose;
     RestrictKeysForKbCheck([]);
     tobj.delete;
     

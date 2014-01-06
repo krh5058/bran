@@ -198,7 +198,7 @@ classdef main < handle
                 
                 exp.sid = s{1};
                 exp.trig = s{2};
-                exp.order = cellfun(@str2double,s{3}(~cellfun(@isempty,s{3})))';
+                exp.order = cellfun(@str2double,s{3})';
             end
             
             exp.presdur = 2; % s
@@ -379,7 +379,7 @@ classdef main < handle
 %             obj.out.out1(end+1,:) = {obj.exp.sid,evt.run,evt.schedt,evt.actt,schedTR,actTR,evt.order,evt.section,evt.pres};
             temp = {obj.exp.sid,evt.run,evt.schedt,evt.actt,schedTR,actTR,evt.order,evt.section,evt.pres};
             for i = 1:length(temp)
-                if ~ischar(temp{i})
+                if ~isstr(temp{i})
                     fprintf(obj.out.fid,num2str(temp{i}));
                 else
                     fprintf(obj.out.fid,temp{i});
